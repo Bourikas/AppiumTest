@@ -1,0 +1,104 @@
+package gr.geekit.AppiumTest;
+
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.time.Duration;
+import java.util.Arrays;
+
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Pause;
+import org.openqa.selenium.interactions.PointerInput;
+import org.openqa.selenium.interactions.Sequence;
+import org.openqa.selenium.remote.RemoteWebElement;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+
+import com.google.common.collect.ImmutableMap;
+
+import io.appium.java_client.android.AndroidDriver;
+import io.appium.java_client.android.options.UiAutomator2Options;
+import io.appium.java_client.service.local.AppiumDriverLocalService;
+import io.appium.java_client.service.local.AppiumServiceBuilder;
+
+public class BrowserBaseTest {
+	
+	public AndroidDriver driver;
+	public AppiumDriverLocalService service; 
+	
+	@BeforeClass //this annotation makes the class work on the start
+	public void ConfigureAppium () throws MalformedURLException, URISyntaxException {
+		
+		//starting appium server
+		service = new AppiumServiceBuilder().withAppiumJS(new File("C:\\Users\\g.bourikas\\AppData\\Roaming\\npm\\node_modules\\appium\\build\\lib\\main.js"))
+				.withIPAddress("127.0.0.1").usingPort(4723).build(); //this pipeline builds a service of appium  server
+		service.start();
+		
+		
+		
+		// android driver 
+		// appium code -> appium server -> mobile
+		// options gives desired setup to driver 
+		UiAutomator2Options options = new UiAutomator2Options();
+		options.setDeviceName("Bourifone");
+		options.setChromedriverExecutable("C:\\\\Users\\\\g.bourikas\\\\eclipse-workspace\\\\AppiumTest\\\\src\\\\test\\\\java\\\\drivers\\\\chromedriver-win64\\\\chromedriver.exe");// solves the webview bug
+		//choosing the app to test
+		options.setCapability("browserName","Chrome"); //no native app, set chrome
+		
+		
+		// starting a driver instance with the appium server url and desired options 
+		driver = new AndroidDriver(new URI("http://127.0.0.1:4723").toURL(), options);
+		driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10)); //time in seconds to wait for flaky tests
+	}
+	
+	@AfterClass //this annotation makes the class work on the end
+	public void tearDown() {
+		//stop server
+				driver.quit();
+				service.stop(); 
+	}
+	
+	public void longPressAction(WebElement webEle, int duration) {
+		((JavascriptExecutor)driver).executeScript("mobile: longClickGesture", 
+				ImmutableMap.of("elementId", ((RemoteWebElement)webEle).getId(),
+						"duration", duration));
+	}
+	
+	public void ScrollToEndFunction() {
+		boolean canScrollMore;
+		do {
+			canScrollMore = (Boolean) ((JavascriptExecutor) driver).executeScript("mobile: scrollGesture", ImmutableMap.of(
+					"left", 100, 
+					"top", 100,
+					"width", 200,
+					"height", 200,
+					"direction", "down",
+					"percent", 3.0
+					));
+		} while (canScrollMore);
+	}
+	
+	public void ScrollLeftAction(WebElement firstImage, String direction) {
+		((JavascriptExecutor) driver).executeScript("mobile: swipeGesture", ImmutableMap.of(
+			    "elementId", ((RemoteWebElement)firstImage).getId(),
+				"direction", direction,
+			    "percent", 0.25
+			));
+	}
+	public void tapByCoordinates(int x, int y) {
+	    PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
+	    Sequence tap = new Sequence(finger, 1);
+
+	    // Move to (x, y)
+	    tap.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), x, y));
+
+	    // Finger down and up to simulate tap
+	    tap.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
+	    tap.addAction(new Pause(finger, Duration.ofMillis(100)));
+	    tap.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
+
+	    driver.perform(Arrays.asList(tap));
+	}
+}
